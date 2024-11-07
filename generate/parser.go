@@ -842,6 +842,20 @@ func schemaOfField(member spec.Member) swaggerSchemaObject {
 		ftype, format, ok := primitiveSchema(ft, member.Type.Name())
 		if ok {
 			core = schemaCore{Type: ftype, Format: format}
+			// 当int64类型字段的tag中包含[string]时转换为string类型，以解决js的number类型精度丢失问题
+			if ft == reflect.Int64 {
+				for _, tag := range member.Tags() {
+					if len(tag.Options) == 0 {
+						continue
+					}
+					for _, option := range tag.Options {
+						if option == stringOption {
+							core = schemaCore{Type: "string", Format: ""}
+						}
+
+					}
+				}
+			}
 		} else {
 			core = schemaCore{Type: ft.String(), Format: "UNKNOWN"}
 		}
