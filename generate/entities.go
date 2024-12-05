@@ -157,7 +157,7 @@ type swaggerParameterObject struct {
 	Type             string              `json:"type,omitempty"`
 	Format           string              `json:"format,omitempty"`
 	Items            *swaggerItemsObject `json:"items,omitempty"`
-	Enum             []string            `json:"enum,omitempty"`
+	Enum             []any               `json:"enum,omitempty"`
 	CollectionFormat string              `json:"collectionFormat,omitempty"`
 	Default          string              `json:"default,omitempty"`
 	MinItems         uint64              `json:"minItems,omitempty"`
@@ -187,6 +187,13 @@ func (o *swaggerParameterObject) Copy(s *swaggerSchemaObject) {
 	o.ExclusiveMaximum = s.ExclusiveMaximum
 }
 
+// apifox 枚举定义
+type apifoxEnumObject struct {
+	Value       string `json:"value,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
 // core part of schema, which is common to itemsObject and schemaObject.
 // http://swagger.io/specification/#itemsObject
 type schemaCore struct {
@@ -199,8 +206,10 @@ type schemaCore struct {
 	// If the item is an enumeration include a list of all the *NAMES* of the
 	// enum values.  I'm not sure how well this will work but assuming all enums
 	// start from 0 index it will be great. I don't think that is a good assumption.
-	Enum    []string `json:"enum,omitempty"`
-	Default string   `json:"default,omitempty"`
+	Enum    []any  `json:"enum,omitempty"`
+	Default string `json:"default,omitempty"`
+
+	XApifoxEnum []apifoxEnumObject `json:"x-apifox-enum,omitempty"`
 }
 
 type swaggerItemsObject schemaCore

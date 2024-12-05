@@ -10,7 +10,7 @@ import (
 func TestDo(t *testing.T) {
 	in := &plugin.Plugin{
 		Api:         nil,
-		ApiFilePath: "/Users/song/code/goctl-swagger/generate/api.api",
+		ApiFilePath: "./api.api",
 		Style:       "gozero",
 		Dir:         "./",
 	}

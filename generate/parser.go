@@ -23,6 +23,8 @@ import (
 var (
 	strColon        = []byte(":")
 	defaultResponse = parseDefaultResponse()
+
+	allEnumsToCoreMap = map[string]schemaCore{} // RawName => core
 )
 
 const (
@@ -135,6 +137,7 @@ func applyGenerate(p *plugin.Plugin, host, basePath, schemes, pack, response str
 		s.Definitions[pack] = resp
 	}
 
+	pluckAllEnums(p.Api.Types)
 	requestResponseRefs := refMap{}
 	renderServiceRoutes(p.Api.Service, p.Api.Service.Groups, s.Paths, requestResponseRefs, pack, dataKey)
 	renderReplyAsDefinition(s.Definitions, p.Api.Types, requestResponseRefs)
@@ -505,7 +508,9 @@ func fillValidateOption(s *swaggerSchemaObject, opt string) {
 		} else {
 			es = strings.Split(kv[1], " ")
 		}
-		s.Enum = es
+		for _, e := range es {
+			s.Enum = append(s.Enum, e)
+		}
 	case "min", "gte", "gt":
 		switch s.Type {
 		case "number", "integer":
@@ -613,7 +618,10 @@ func renderStruct(member spec.Member) swaggerParameterObject {
 			if strings.HasPrefix(option, optionsOption) {
 				segs := strings.SplitN(option, equalToken, 2)
 				if len(segs) == 2 {
-					sp.Enum = strings.Split(segs[1], optionSeparator)
+					arr := strings.Split(segs[1], optionSeparator)
+					for _, a := range arr {
+						sp.Enum = append(sp.Enum, a)
+					}
 				}
 			}
 
@@ -664,10 +672,20 @@ func renderStruct(member spec.Member) swaggerParameterObject {
 	return sp
 }
 
-func renderReplyAsDefinition(d swaggerDefinitionsObject, p []spec.Type, _ refMap) {
+func pluckAllEnums(types []spec.Type) {
+	for _, typ := range types {
+		ds, _ := typ.(spec.DefineStruct)
+		// 如果是枚举类型则收集起来方便后续判断使用
+		if IsEnumType(ds) {
+			allEnumsToCoreMap[ds.RawName] = enumToSchemaCore(typ)
+		}
+	}
+}
+
+func renderReplyAsDefinition(d swaggerDefinitionsObject, types []spec.Type, _ refMap) {
 	// record inline struct
 	inlineMap := make(map[string][]string)
-	for _, i2 := range p {
+	for _, typ := range types {
 		var formFields, untaggedFields swaggerSchemaObjectProperties
 
 		schema := swaggerSchemaObject{
@@ -676,7 +694,7 @@ func renderReplyAsDefinition(d swaggerDefinitionsObject, p []spec.Type, _ refMap
 			},
 			Properties: new(swaggerSchemaObjectProperties),
 		}
-		defineStruct, _ := i2.(spec.DefineStruct)
+		defineStruct, _ := typ.(spec.DefineStruct)
 
 		schema.Title = defineStruct.Name()
 
@@ -719,7 +737,7 @@ func renderReplyAsDefinition(d swaggerDefinitionsObject, p []spec.Type, _ refMap
 			*schema.Properties = append(*schema.Properties, untaggedFields...)
 		}
 
-		d[i2.Name()] = schema
+		d[typ.Name()] = schema
 	}
 
 	// inherit properties
@@ -788,10 +806,53 @@ func fieldIn(member spec.Member) string {
 	return ""
 }
 
+func enumToSchemaCore(typ spec.Type) schemaCore {
+	ds, _ := typ.(spec.DefineStruct)
+
+	enum := ToEnumType(ds)
+
+	kind := swaggerMapTypes[enum.GoType]
+
+	ftype, fm, ok := primitiveSchema(kind, typ.Name())
+	if !ok {
+		core := schemaCore{Type: kind.String(), Format: "UNKNOWN"}
+		return core
+	}
+
+	core := schemaCore{
+		Type:        ftype,
+		Format:      fm,
+		Enum:        nil,
+		XApifoxEnum: nil,
+	}
+	for _, enumMember := range enum.Members {
+		if ftype == "integer" {
+			intEnum, _ := strconv.Atoi(enumMember.Value)
+			core.Enum = append(core.Enum, intEnum)
+		} else {
+			core.Enum = append(core.Enum, enumMember.Value)
+		}
+		object := apifoxEnumObject{
+			Value:       enumMember.Value,
+			Name:        enumMember.Name,
+			Description: enumMember.Comment,
+		}
+		core.XApifoxEnum = append(core.XApifoxEnum, object)
+	}
+	return core
+}
+
 func schemaOfField(member spec.Member) swaggerSchemaObject {
 	ret := swaggerSchemaObject{}
 
 	var core schemaCore
+
+	memberStruct, _ := member.Type.(spec.DefineStruct)
+	// 如果是枚举类型,直接转换为schemaCore并返回
+	if IsEnumType(memberStruct) {
+		ret.schemaCore = enumToSchemaCore(member.Type)
+		return ret
+	}
 
 	kind := swaggerMapTypes[member.Type.Name()]
 	var props *swaggerSchemaObjectProperties
@@ -825,6 +886,13 @@ func schemaOfField(member spec.Member) swaggerSchemaObject {
 				core.Items = &swaggerItemsObject{Type: ft.String(), Format: "UNKNOWN"}
 			}
 		} else {
+			// 如果refTypeName是我们自定义的枚举类型，直接转为基础类型的schemaCore
+			existCore, ok := allEnumsToCoreMap[refTypeName]
+			if ok {
+				core = existCore
+				break
+			}
+
 			core = schemaCore{
 				Ref: "#/definitions/" + refTypeName,
 			}
@@ -914,8 +982,12 @@ func schemaOfField(member spec.Member) swaggerSchemaObject {
 			case strings.HasPrefix(option, optionsOption):
 				segs := strings.SplitN(option, equalToken, 2)
 				if len(segs) == 2 {
-					ret.Enum = strings.Split(segs[1], optionSeparator)
+					split := strings.Split(segs[1], optionSeparator)
+					for _, one := range split {
+						ret.Enum = append(ret.Enum, one)
+					}
 				}
+
 			case strings.HasPrefix(option, rangeOption):
 				segs := strings.SplitN(option, equalToken, 2)
 				if len(segs) == 2 {

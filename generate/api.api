@@ -1,0 +1,77 @@
+syntax = "v1"
+
+info(
+    title: "demo" // 服务标题
+    desc: "demo description" // 服务描述
+)
+
+type NumEnum {
+    NumEnumAll int32 `json:"num_type_all" val:"1"`   // 全部
+    NumEnumPart int32 `json:"num_type_part" val:"2"` // 部分
+}
+
+type StrEnum {
+    StrEnumClub string `json:"str_type_club"` // 社群
+    StrEnumUser string `json:"str_type_user"` // 用户
+}
+
+type DemoReq {
+    Name string `json:"name"`
+
+    NumEnum NumEnum `json:"num_type" validate:"required,oneof=0 1"`
+    StrEnum StrEnum `json:"str_type" validate:"required,oneof=club user"`
+
+    NumEnumArr []NumEnum `json:"num_enum_arr"`
+    StrEnumArr []StrEnum `json:"str_enum_arr"`
+
+    NormalIntArr []int32 `json:"normal_int_arr"`
+    NormalStrArr []int32 `json:"normal_str_arr"`
+
+    IntOpt int32 `json:"int_opt,options=1|2|3"`
+    StrOpt string `json:"str_opt,options=a|b|c"`
+
+    IntValidate int32 `json:"int_validate" validate:"required,oneof=1 2 3"`
+    StrValidate string `json:"str_validate" validate:"required,oneof=a b c"`
+
+    IntMix int32 `json:"int_mix,options=1|2|3" validate:"required,oneof=1 2 3"`
+    StrMix string `json:"str_mix,options=a|b|c" validate:"required,oneof=a b c"`
+
+    IntMixPro NumEnum `json:"int_mix_pro,options=1|2" validate:"required,oneof=1 2"`
+    StrMixPro StrEnum `json:"str_mix_pro,options=club|user" validate:"required,oneof=club user"`
+}
+
+type DemoResp {
+    Name string `json:"name"`
+
+    NumEnum NumEnum `json:"num_type" validate:"required,oneof=0 1"`
+    StrEnum StrEnum `json:"str_type" validate:"required,oneof=club user"`
+
+    NumEnumArr []NumEnum `json:"num_enum_arr"`
+    StrEnumArr []StrEnum `json:"str_enum_arr"`
+
+    NormalIntArr []int32 `json:"normal_int_arr"`
+    NormalStrArr []int32 `json:"normal_str_arr"`
+
+    IntOpt int32 `json:"int_opt,options=1|2|3"`
+    StrOpt string `json:"str_opt,options=a|b|c"`
+
+    IntValidate int32 `json:"int_validate" validate:"required,oneof=1 2 3"`
+    StrValidate string `json:"str_validate" validate:"required,oneof=a b c"`
+
+    IntMix int32 `json:"int_mix,options=1|2|3" validate:"required,oneof=1 2 3"`
+    StrMix string `json:"str_mix,options=a|b|c" validate:"required,oneof=a b c"`
+
+    IntMixPro NumEnum `json:"int_mix_pro,options=1|2" validate:"required,oneof=1 2"`
+    StrMixPro StrEnum `json:"str_mix_pro,options=club|user" validate:"required,oneof=club user"`
+}
+
+@server(
+    prefix:     /api/demo/v1/favourite/item
+    auth: false
+    middleware: TokenAuthMiddleware
+)
+service demos {
+    @doc "demo"
+    @handler DemoHandler
+    post /demo (DemoReq) returns (DemoResp)
+}
