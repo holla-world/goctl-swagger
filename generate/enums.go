@@ -44,6 +44,15 @@ func IsEnumType(tp spec.DefineStruct) bool {
 	return isEnum
 }
 
+func isSetValTag(member spec.Member) (bool, string) {
+	for _, tag := range member.Tags() {
+		if tag.Key == "val" {
+			return true, tag.Name
+		}
+	}
+	return false, ""
+}
+
 func ToEnumType(tp spec.DefineStruct) Enum {
 	// tp 是外围结构
 	items := make([]EnumMember, 0)
@@ -70,9 +79,13 @@ func ToEnumType(tp spec.DefineStruct) Enum {
 				}
 			}
 		case "string":
-			// 去掉前缀，然后转下划线
-			val := strings.TrimPrefix(member.Name, tp.RawName)
-			val = lo.SnakeCase(val)
+			// 如果设置了val标签，则使用val的值，否则使用去掉前缀后的值
+			ok, val := isSetValTag(member)
+			if !ok {
+				// 去掉前缀，然后转下划线
+				val = strings.TrimPrefix(member.Name, tp.RawName)
+				val = lo.SnakeCase(val)
+			}
 			item.Value = val
 		}
 
