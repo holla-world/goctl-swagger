@@ -6,7 +6,7 @@ info(
 )
 
 // 约定: 假如每个成员的类型相同,前缀和结构体名称相同,那么插件就会认为这是一个枚举类型
-// 目前枚举仅支持: int32, string两种类型
+// 目前枚举仅支持: int32, int, int64, string类型
 type NumEnum {
     NumEnumAll int32 `json:"-" val:"1"`   // 全部
     NumEnumPart int32 `json:"-" val:"2"` // 部分

@@ -70,8 +70,8 @@ func ToEnumType(tp spec.DefineStruct) Enum {
 		}
 
 		switch enumGoType {
-		case "int32":
-			//  如果是int32，则从tag中获取val的值
+		case "int32", "int", "int64":
+			//  如果是int类型，则从tag中获取val的值
 			for _, tag := range member.Tags() {
 				if tag.Key == "val" {
 					item.Value = tag.Name
